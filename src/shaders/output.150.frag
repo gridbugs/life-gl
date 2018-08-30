@@ -12,10 +12,18 @@ uniform Properties {
 
 in vec2 v_Coord;
 
+vec4 get_colour(sampler2D t_InColour) {
+    if (texture(t_InColour, v_Coord).r > 0) {
+        return vec4(0, 0, 0, 1);
+    } else {
+        return vec4(1, 1, 1, 1);
+    }
+}
+
 void main() {
     if (u_WhichInputToRenderFrom == 0u) {
-        Target = texture(t_InColour0, v_Coord);
+        Target = get_colour(t_InColour0);
     } else {
-        Target = texture(t_InColour1, v_Coord);
+        Target = get_colour(t_InColour1);
     }
 }

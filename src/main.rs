@@ -25,6 +25,7 @@ gfx_vertex_struct!(QuadCorners {
 gfx_constant_struct!(InternalProperties {
     init: u32 = "u_Init",
     delta: f32 = "u_Delta",
+    size_in_pixels: [f32; 2] = "u_SizeInPixels",
 });
 
 gfx_constant_struct!(OutputProperties {
@@ -94,7 +95,7 @@ where
     };
     let pso = factory
         .create_pipeline_simple(
-            include_bytes!("shaders/common.150.vert"),
+            include_bytes!("shaders/internal.150.vert"),
             include_bytes!("shaders/internal.150.frag"),
             internal_pipe::new(),
         )
@@ -125,7 +126,7 @@ where
     };
     let pso = factory
         .create_pipeline_simple(
-            include_bytes!("shaders/common.150.vert"),
+            include_bytes!("shaders/output.150.vert"),
             include_bytes!("shaders/output.150.frag"),
             output_pipe::new(),
         )
@@ -134,6 +135,8 @@ where
 }
 
 struct Renderer<R: gfx::Resources> {
+    width: u32,
+    height: u32,
     current: gfx::Bundle<R, internal_pipe::Data<R>>,
     other: gfx::Bundle<R, internal_pipe::Data<R>>,
     output: gfx::Bundle<R, output_pipe::Data<R>>,
@@ -156,13 +159,15 @@ impl<R: gfx::Resources> Renderer<R> {
         let (_, srv1, rtv1) = factory
             .create_render_target(width as u16, height as u16)
             .expect("Failed to create render target");
-        let current = internal_bundle(width, height, srv0.clone(), rtv1.clone(), factory);
-        let other = internal_bundle(width, height, srv1.clone(), rtv0.clone(), factory);
+        let current = internal_bundle(width, height, srv0.clone(), rtv1, factory);
+        let other = internal_bundle(width, height, srv1.clone(), rtv0, factory);
         let output = output_bundle(width, height, srv0, srv1, rtv, factory);
         let output_properties = OutputProperties {
             which_input_to_render_from: 0,
         };
         Self {
+            width,
+            height,
             current,
             other,
             output,
@@ -170,36 +175,57 @@ impl<R: gfx::Resources> Renderer<R> {
         }
     }
 
-    fn init<C>(&self, encoder: &mut gfx::Encoder<R, C>)
+    fn init_0<C>(&mut self, encoder: &mut gfx::Encoder<R, C>)
     where
         C: gfx::CommandBuffer<R>,
     {
+        let size_in_pixels = [self.width as f32, self.height as f32];
+        encoder.update_constant_buffer(
+            &self.other.data.properties,
+            &InternalProperties {
+                init: 1,
+                delta: 0.,
+                size_in_pixels,
+            },
+        );
+        self.other.encode(encoder);
+    }
+    fn init_1<C>(&mut self, encoder: &mut gfx::Encoder<R, C>)
+    where
+        C: gfx::CommandBuffer<R>,
+    {
+        let size_in_pixels = [self.width as f32, self.height as f32];
         encoder.update_constant_buffer(
             &self.current.data.properties,
-            &InternalProperties { init: 1, delta: 0. },
+            &InternalProperties {
+                init: 0,
+                delta: 1.,
+                size_in_pixels,
+            },
         );
         self.current.encode(encoder);
-        encoder.update_constant_buffer(
-            &self.current.data.properties,
-            &InternalProperties { init: 0, delta: 0. },
-        );
+    }
+    fn init_2<C>(&mut self, encoder: &mut gfx::Encoder<R, C>)
+    where
+        C: gfx::CommandBuffer<R>,
+    {
+        let size_in_pixels = [self.width as f32, self.height as f32];
         encoder.update_constant_buffer(
             &self.other.data.properties,
             &InternalProperties {
                 init: 0,
-                delta: -0.05,
+                delta: 0.,
+                size_in_pixels,
             },
         );
-        self.current.encode(encoder);
         self.other.encode(encoder);
-        encoder.update_constant_buffer(&self.output.data.properties, &self.output_properties);
-        self.output.encode(encoder);
     }
 
     fn draw<C>(&self, encoder: &mut gfx::Encoder<R, C>)
     where
         C: gfx::CommandBuffer<R>,
     {
+        encoder.clear(&self.current.data.out_colour, [0., 0., 0., 1.]);
         self.current.encode(encoder);
         self.output.encode(encoder);
     }
@@ -209,16 +235,15 @@ impl<R: gfx::Resources> Renderer<R> {
         C: gfx::CommandBuffer<R>,
     {
         ::std::mem::swap(&mut self.current, &mut self.other);
-        self.output_properties.which_input_to_render_from =
-            1 - self.output_properties.which_input_to_render_from;
+        self.output_properties.which_input_to_render_from = 1;
         encoder.update_constant_buffer(&self.output.data.properties, &self.output_properties);
         self.output.encode(encoder);
     }
 }
 
 fn main() {
-    let window_width = 960;
-    let window_height = 640;
+    let window_width = 1920;
+    let window_height = 1080;
 
     let builder = glutin::WindowBuilder::new()
         .with_dimensions(window_width, window_height)
@@ -235,7 +260,9 @@ fn main() {
 
     let mut renderer = Renderer::new(window_width, window_height, rtv, &mut factory);
 
-    renderer.init(&mut encoder);
+    renderer.init_0(&mut encoder);
+    renderer.init_1(&mut encoder);
+    renderer.init_2(&mut encoder);
 
     let mut running = true;
     while running {
@@ -243,20 +270,6 @@ fn main() {
             glutin::Event::WindowEvent { event, .. } => match event {
                 glutin::WindowEvent::CloseRequested => {
                     running = false;
-                }
-                glutin::WindowEvent::KeyboardInput { input, .. } => {
-                    if let Some(virtual_keycode) = input.virtual_keycode {
-                        match input.state {
-                            glutin::ElementState::Pressed => match virtual_keycode {
-                                glutin::VirtualKeyCode::Space => {
-                                    renderer.draw(&mut encoder);
-                                    renderer.swap_buffers(&mut encoder);
-                                }
-                                _ => (),
-                            },
-                            _ => (),
-                        }
-                    }
                 }
                 _ => (),
             },
@@ -266,6 +279,10 @@ fn main() {
         if !running {
             break;
         }
+        renderer.draw(&mut encoder);
+        renderer.swap_buffers(&mut encoder);
+        renderer.draw(&mut encoder);
+        renderer.swap_buffers(&mut encoder);
 
         encoder.flush(&mut device);
         window.swap_buffers().unwrap();
