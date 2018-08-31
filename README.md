@@ -1,6 +1,8 @@
 # life-gl
 
-Conway's Game of Life for your gpu.
+[Conway's Game of Life](https://en.wikipedia.org/wiki/Conway's_Game_of_Life)
+implemented in shaders. Supports a number of functional and aesthetic
+configurations. Press space to restart.
 
 ## Examples
 
