@@ -314,7 +314,7 @@ fn run(
     delay: Option<Duration>,
 ) {
     let mut events_loop = glutin::EventsLoop::new();
-    let builder = glutin::WindowBuilder::new();
+    let builder = glutin::WindowBuilder::new().with_title("life-gl");
     let builder = match window_size {
         WindowSize::Fullscreen => {
             let primary_monitor = events_loop.get_primary_monitor();
