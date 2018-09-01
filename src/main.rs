@@ -300,8 +300,8 @@ impl<R: gfx::Resources> Renderer<R> {
         C: gfx::CommandBuffer<R>,
     {
         self.life.encode(encoder);
-        self.output.encode(encoder);
         self.flip.encode(encoder);
+        self.output.encode(encoder);
     }
 }
 
@@ -314,7 +314,7 @@ fn run(
     delay: Option<Duration>,
 ) {
     let mut events_loop = glutin::EventsLoop::new();
-    let builder = glutin::WindowBuilder::new().with_title("life-gl");
+    let builder = glutin::WindowBuilder::new().with_title("life-gl").with_resizable(true);
     let builder = match window_size {
         WindowSize::Fullscreen => {
             let primary_monitor = events_loop.get_primary_monitor();
@@ -324,8 +324,6 @@ fn run(
             let size = glutin::dpi::LogicalSize::new(width, height);
             builder
                 .with_dimensions(size)
-                .with_max_dimensions(size)
-                .with_min_dimensions(size)
         }
     };
     let context = glutin::ContextBuilder::new().with_vsync(true);
