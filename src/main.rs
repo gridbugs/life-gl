@@ -317,7 +317,9 @@ fn run(
     }: Args,
 ) {
     let mut events_loop = glutin::EventsLoop::new();
-    let builder = glutin::WindowBuilder::new().with_title("life-gl").with_resizable(true);
+    let builder = glutin::WindowBuilder::new()
+        .with_title("life-gl")
+        .with_resizable(true);
     let builder = match window_size {
         WindowSize::Fullscreen => {
             let primary_monitor = events_loop.get_primary_monitor();
@@ -327,6 +329,9 @@ fn run(
             let size = glutin::dpi::LogicalSize::new(width, height);
             builder
                 .with_dimensions(size)
+                .with_max_dimensions(size)
+                .with_min_dimensions(size)
+                .with_resizable(true)
         }
     };
     let context = glutin::ContextBuilder::new().with_vsync(true);
