@@ -1,5 +1,6 @@
+#[macro_use]
+extern crate argle;
 extern crate cgmath;
-extern crate getopts;
 #[macro_use]
 extern crate gfx;
 extern crate gfx_device_gl;
@@ -10,11 +11,11 @@ extern crate nom;
 extern crate rand;
 use gfx::Device;
 
-use std::env;
+use argle::*;
+use std::fmt;
 use std::thread;
 use std::time::Duration;
 use glutin::GlContext;
-use getopts::Options;
 use rand::{Rng, SeedableRng};
 
 type ColourFormat = gfx::format::Srgba8;
@@ -306,12 +307,14 @@ impl<R: gfx::Resources> Renderer<R> {
 }
 
 fn run(
-    mut rng: rand::StdRng,
-    window_size: WindowSize,
-    cell_size: u32,
-    colours: Colours,
-    game_params: GameParams,
-    delay: Option<Duration>,
+    Args {
+        mut rng,
+        window_size,
+        cell_size,
+        colours,
+        game_params,
+        delay,
+    }: Args,
 ) {
     let mut events_loop = glutin::EventsLoop::new();
     let builder = glutin::WindowBuilder::new().with_title("life-gl").with_resizable(true);
@@ -391,46 +394,32 @@ fn run(
     }
 }
 
-const SEED_OPT: &'static str = "seed";
-const WIDTH_OPT: &'static str = "width";
-const HEIGHT_OPT: &'static str = "height";
-const FULLSCREEN_OPT: &'static str = "fullscreen";
-const CELL_SIZE_OPT: &'static str = "cell-size";
-const ALIVE_COLOUR_OPT: &'static str = "alive-colour";
-const DEAD_COLOUR_OPT: &'static str = "dead-colour";
-const SURVIVE_MIN_OPT: &'static str = "survive-min";
-const SURVIVE_MAX_OPT: &'static str = "survive-max";
-const RESURRECT_MIN_OPT: &'static str = "resurrect-min";
-const RESURRECT_MAX_OPT: &'static str = "resurrect-max";
-const DELAY_OPT: &'static str = "delay";
-const HELP_OPT: &'static str = "help";
-
 const DEFAULT_WIDTH: f64 = 640.;
 const DEFAULT_HEIGHT: f64 = 480.;
 
+#[derive(Clone, Debug)]
 enum WindowSize {
     Fullscreen,
     Dimensions(f64, f64),
 }
 
+impl fmt::Display for WindowSize {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl WindowSize {
-    fn parse(matches: &getopts::Matches) -> Self {
-        let width = matches
-            .opt_str(WIDTH_OPT)
-            .map(|s| s.parse::<f64>().unwrap());
-        let height = matches
-            .opt_str(HEIGHT_OPT)
-            .map(|s| s.parse::<f64>().unwrap());
-        let fullscreen = matches.opt_present(FULLSCREEN_OPT);
-        match (width, height, fullscreen) {
-            (None, None, false) => WindowSize::Dimensions(DEFAULT_WIDTH, DEFAULT_HEIGHT),
-            (Some(width), Some(height), false) => WindowSize::Dimensions(width, height),
-            (None, None, true) => WindowSize::Fullscreen,
-            _ => panic!(
-                "Incorrect combination of {}, {}, and {}",
-                WIDTH_OPT, HEIGHT_OPT, FULLSCREEN_OPT
-            ),
-        }
+    fn params() -> impl Param<Item = Self> {
+        let dimensions = codepend_params! {
+            arg_opt("x", "width", "width of window in pixels", "FLOAT"),
+            arg_opt("y", "height", "height of window in pixels", "FLOAT"),
+        }.opt_map(|(width, height)| WindowSize::Dimensions(width, height));
+        let fullscreen =
+            flag("f", "fullscreen", "take up the entire screen").some_if(WindowSize::Fullscreen);
+        dimensions
+            .either_homogeneous(fullscreen)
+            .with_default(WindowSize::Dimensions(DEFAULT_WIDTH, DEFAULT_HEIGHT))
     }
 }
 
@@ -440,20 +429,20 @@ struct Colours {
     dead: [f32; 4],
 }
 
-const DEFAULT_ALIVE_COLOUR: [f32; 4] = [0., 0., 0., 1.];
-const DEFAULT_DEAD_COLOUR: [f32; 4] = [1., 1., 1., 1.];
-
 impl Colours {
-    fn parse(matches: &getopts::Matches) -> Self {
-        let alive = matches
-            .opt_str(ALIVE_COLOUR_OPT)
-            .map(|s| colour::parse_colour(s.as_str()).unwrap())
-            .unwrap_or(DEFAULT_ALIVE_COLOUR);
-        let dead = matches
-            .opt_str(DEAD_COLOUR_OPT)
-            .map(|s| colour::parse_colour(s.as_str()).unwrap())
-            .unwrap_or(DEFAULT_DEAD_COLOUR);
-        Colours { alive, dead }
+    fn params() -> impl argle::Param<Item = Self> {
+        map_params! {
+            let {
+                alive =
+                    arg_opt_def("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB",
+                                "#FFFFFF".to_string()).convert(|s| colour::parse_colour(s));
+                dead =
+                    arg_opt_def("d", "dead-colour", "colour of alive cells in hex", "#RRGGBB",
+                                "#000000".to_string()).convert(|s| colour::parse_colour(s));
+            } in {
+                Self { alive, dead }
+            }
+        }
     }
 }
 
@@ -471,124 +460,97 @@ const DEFAULT_RESURRECT_MIN: u32 = 3;
 const DEFAULT_RESURRECT_MAX: u32 = 3;
 
 impl GameParams {
-    fn parse(matches: &getopts::Matches) -> Self {
-        let survive_min = matches
-            .opt_str(SURVIVE_MIN_OPT)
-            .map(|s| s.parse::<u32>().unwrap())
-            .unwrap_or(DEFAULT_SURVIVE_MIN);
-        let survive_max = matches
-            .opt_str(SURVIVE_MAX_OPT)
-            .map(|s| s.parse::<u32>().unwrap())
-            .unwrap_or(DEFAULT_SURVIVE_MAX);
-        let resurrect_min = matches
-            .opt_str(RESURRECT_MIN_OPT)
-            .map(|s| s.parse::<u32>().unwrap())
-            .unwrap_or(DEFAULT_RESURRECT_MIN);
-        let resurrect_max = matches
-            .opt_str(RESURRECT_MAX_OPT)
-            .map(|s| s.parse::<u32>().unwrap())
-            .unwrap_or(DEFAULT_RESURRECT_MAX);
+    fn params() -> impl Param<Item = Self> {
+        map_params! {
+            let {
+                survive_min = arg_opt_def(
+                    "s",
+                    "survive-min",
+                    "minimum living neighbours to survive",
+                    "INT",
+                    DEFAULT_SURVIVE_MIN
+                );
+                survive_max = arg_opt_def(
+                    "t",
+                    "survive-max",
+                    "maximum living neighbours to survive",
+                    "INT",
+                    DEFAULT_SURVIVE_MAX
+                );
+                resurrect_min = arg_opt_def(
+                    "r",
+                    "resurrect-min",
+                    "minimum living neighbours to resurrect",
+                    "INT",
+                    DEFAULT_RESURRECT_MIN
+                );
+                resurrect_max = arg_opt_def(
+                    "u",
+                    "resurrect-max",
+                    "maximum living neighbours to resurrect",
+                    "INT",
+                    DEFAULT_RESURRECT_MAX
+                );
+            } in {
+                Self {
+                    survive_min,
+                    survive_max,
+                    resurrect_min,
+                    resurrect_max,
+                }
+            }
+        }
+    }
+}
 
-        Self {
-            survive_min,
-            survive_max,
-            resurrect_min,
-            resurrect_max,
+struct Args {
+    rng: rand::StdRng,
+    window_size: WindowSize,
+    cell_size: u32,
+    colours: Colours,
+    game_params: GameParams,
+    delay: Option<Duration>,
+}
+
+impl Args {
+    fn params() -> impl argle::Param<Item = Self> {
+        map_params! {
+            let {
+                cell_size = arg_opt_def("c", "cell-size", "size of cell in pixels", "INT", 1);
+                colours = Colours::params();
+                delay = arg_opt("e", "delay", "delay in ms to pause between frames", "INT")
+                    .map(|d| if d == Some(0) { None } else { d })
+                    .opt_map(Duration::from_millis);
+                rng = arg_opt::<u64>("n", "seed",
+                                     "seed for the random number generator (omit for random seed)",
+                                     "INT")
+                    .map(|seed| match seed {
+                        Some(seed) => {
+                            let mut buf = [0; 32];
+                            for i in 0..8 {
+                                buf[i] = ((seed >> i) & 0xff) as u8;
+                            }
+                            rand::StdRng::from_seed(buf)
+                        }
+                        None => rand::StdRng::from_rng(rand::thread_rng()).unwrap(),
+                    });
+                game_params = GameParams::params();
+                window_size = WindowSize::params();
+            } in {
+                Self { cell_size, colours, delay, game_params, rng, window_size }
+            }
         }
     }
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let mut opts = Options::new();
-    let program_name = args[0].clone();
-    opts.optopt(
-        "s",
-        SEED_OPT,
-        "seed for the random number generator (omit for random seed)",
-        "INT",
-    );
-    opts.optopt("x", WIDTH_OPT, "width of window in pixels", "FLOAT");
-    opts.optopt("y", HEIGHT_OPT, "height of window in pixels", "FLOAT");
-    opts.optflag("f", FULLSCREEN_OPT, "take up the entire screen");
-    opts.optopt(
-        "c",
-        CELL_SIZE_OPT,
-        "size of cell in pixels (default 1)",
-        "INT",
-    );
-    opts.optopt(
-        "a",
-        ALIVE_COLOUR_OPT,
-        "colour of alive cells in hex",
-        "#RRGGBB",
-    );
-    opts.optopt(
-        "d",
-        DEAD_COLOUR_OPT,
-        "colour of dead cells in hex",
-        "#RRGGBB",
-    );
-    opts.optopt(
-        "s",
-        SURVIVE_MIN_OPT,
-        "minimum living neighbours to survive",
-        "INT",
-    );
-    opts.optopt(
-        "t",
-        SURVIVE_MAX_OPT,
-        "maximum living neighbours to survive",
-        "INT",
-    );
-    opts.optopt(
-        "r",
-        RESURRECT_MIN_OPT,
-        "minimum living neighbours to resurrect",
-        "INT",
-    );
-    opts.optopt(
-        "u",
-        RESURRECT_MAX_OPT,
-        "maximum living neighbours to resurrect",
-        "INT",
-    );
-    opts.optopt("e", DELAY_OPT, "delay in ms to pause between frames", "INT");
-    opts.optflag("h", HELP_OPT, "print this help menu");
-
-    let matches = opts.parse(args).unwrap();
-
-    if matches.opt_present(HELP_OPT) {
-        let brief = format!("Usage: {} [options]", program_name);
-        print!("{}", opts.usage(&brief));
-        return;
-    }
-
-    let seed = matches.opt_str(SEED_OPT).map(|s| s.parse::<u64>().unwrap());
-    let rng = match seed {
-        Some(seed) => {
-            let mut buf = [0; 32];
-            for i in 0..8 {
-                buf[i] = ((seed >> i) & 0xff) as u8;
-            }
-            rand::StdRng::from_seed(buf)
+    match Args::params().with_default_help().parse_env_def() {
+        (Ok(HelpOr::Value(args)), _usage) => run(args),
+        (Ok(HelpOr::Help), usage) => print!("{}", usage.render()),
+        (Err(error), usage) => {
+            print!("{}\n\n", error);
+            print!("{}", usage.render());
+            ::std::process::exit(1);
         }
-        None => rand::StdRng::from_rng(rand::thread_rng()).unwrap(),
-    };
-    let window_size = WindowSize::parse(&matches);
-    let cell_size = matches
-        .opt_str(CELL_SIZE_OPT)
-        .map(|s| s.parse::<u32>().unwrap())
-        .unwrap_or(1);
-
-    let colours = Colours::parse(&matches);
-    let game_params = GameParams::parse(&matches);
-
-    let delay = matches.opt_str(DELAY_OPT).map(|s| s.parse().unwrap());
-    let delay = match delay {
-        Some(0) | None => None,
-        Some(delay) => Some(Duration::from_millis(delay)),
-    };
-
-    run(rng, window_size, cell_size, colours, game_params, delay);
+    }
 }

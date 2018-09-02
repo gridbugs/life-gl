@@ -21,9 +21,9 @@ named!(hex_colour<&str, [f32; 4]>,
     )
 );
 
-pub fn parse_colour(c: &str) -> Option<[f32; 4]> {
+pub fn parse_colour(c: &str) -> Result<[f32; 4], String> {
     match hex_colour(c) {
-        Ok((_, c)) => Some(c),
-        Err(_) => None,
+        Ok((_, c)) => Ok(c),
+        Err(e) => Err(format!("{}", e)),
     }
 }
