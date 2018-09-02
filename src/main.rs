@@ -439,10 +439,10 @@ impl Colours {
         map_params! {
             let {
                 alive =
-                    arg_opt_def("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB",
+                    arg_opt_default("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB",
                                 "#FFFFFF".to_string()).convert(|s| colour::parse_colour(s));
                 dead =
-                    arg_opt_def("d", "dead-colour", "colour of alive cells in hex", "#RRGGBB",
+                    arg_opt_default("d", "dead-colour", "colour of dead cells in hex", "#RRGGBB",
                                 "#000000".to_string()).convert(|s| colour::parse_colour(s));
             } in {
                 Self { alive, dead }
@@ -468,28 +468,28 @@ impl GameParams {
     fn params() -> impl Param<Item = Self> {
         map_params! {
             let {
-                survive_min = arg_opt_def(
+                survive_min = arg_opt_default(
                     "s",
                     "survive-min",
                     "minimum living neighbours to survive",
                     "INT",
                     DEFAULT_SURVIVE_MIN
                 );
-                survive_max = arg_opt_def(
+                survive_max = arg_opt_default(
                     "t",
                     "survive-max",
                     "maximum living neighbours to survive",
                     "INT",
                     DEFAULT_SURVIVE_MAX
                 );
-                resurrect_min = arg_opt_def(
+                resurrect_min = arg_opt_default(
                     "r",
                     "resurrect-min",
                     "minimum living neighbours to resurrect",
                     "INT",
                     DEFAULT_RESURRECT_MIN
                 );
-                resurrect_max = arg_opt_def(
+                resurrect_max = arg_opt_default(
                     "u",
                     "resurrect-max",
                     "maximum living neighbours to resurrect",
@@ -521,7 +521,7 @@ impl Args {
     fn params() -> impl argle::Param<Item = Self> {
         map_params! {
             let {
-                cell_size = arg_opt_def("c", "cell-size", "size of cell in pixels", "INT", 1);
+                cell_size = arg_opt_default("c", "cell-size", "size of cell in pixels", "INT", 1);
                 colours = Colours::params();
                 delay = arg_opt("e", "delay", "delay in ms to pause between frames", "INT")
                     .map(|d| if d == Some(0) { None } else { d })
@@ -549,7 +549,7 @@ impl Args {
 }
 
 fn main() {
-    match Args::params().with_default_help().parse_env_def() {
+    match Args::params().with_default_help().parse_env_default() {
         (Ok(HelpOr::Value(args)), _usage) => run(args),
         (Ok(HelpOr::Help), usage) => print!("{}", usage.render()),
         (Err(error), usage) => {
