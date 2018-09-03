@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate argle;
+extern crate arg_combinators;
 extern crate cgmath;
 #[macro_use]
 extern crate gfx;
@@ -11,12 +11,12 @@ extern crate nom;
 extern crate rand;
 use gfx::Device;
 
-use argle::*;
+use arg_combinators::*;
+use glutin::GlContext;
+use rand::{Rng, SeedableRng};
 use std::fmt;
 use std::thread;
 use std::time::Duration;
-use glutin::GlContext;
-use rand::{Rng, SeedableRng};
 
 type ColourFormat = gfx::format::Srgba8;
 type DepthFormat = gfx::format::DepthStencil;
@@ -415,11 +415,11 @@ impl fmt::Display for WindowSize {
 }
 
 impl WindowSize {
-    fn params() -> impl Param<Item = Self> {
-        let dimensions = codepend_params! {
-            arg_opt("x", "width", "width of window in pixels", "FLOAT"),
-            arg_opt("y", "height", "height of window in pixels", "FLOAT"),
-        }.opt_map(|(width, height)| WindowSize::Dimensions(width, height));
+    fn arg() -> impl Arg<Item = Self> {
+        let dimensions = option_join_args! {
+            opt("x", "width", "width of window in pixels", "FLOAT"),
+            opt("y", "height", "height of window in pixels", "FLOAT"),
+        }.option_map(|(width, height)| WindowSize::Dimensions(width, height));
         let fullscreen =
             flag("f", "fullscreen", "take up the entire screen").some_if(WindowSize::Fullscreen);
         dimensions
@@ -435,14 +435,14 @@ struct Colours {
 }
 
 impl Colours {
-    fn params() -> impl argle::Param<Item = Self> {
-        map_params! {
+    fn arg() -> impl Arg<Item = Self> {
+        map_args! {
             let {
                 alive =
-                    arg_opt_default("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB",
+                    opt_default("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB",
                                 "#FFFFFF".to_string()).convert(|s| colour::parse_colour(s));
                 dead =
-                    arg_opt_default("d", "dead-colour", "colour of dead cells in hex", "#RRGGBB",
+                    opt_default("d", "dead-colour", "colour of dead cells in hex", "#RRGGBB",
                                 "#000000".to_string()).convert(|s| colour::parse_colour(s));
             } in {
                 Self { alive, dead }
@@ -465,31 +465,31 @@ const DEFAULT_RESURRECT_MIN: u32 = 3;
 const DEFAULT_RESURRECT_MAX: u32 = 3;
 
 impl GameParams {
-    fn params() -> impl Param<Item = Self> {
-        map_params! {
+    fn arg() -> impl Arg<Item = Self> {
+        map_args! {
             let {
-                survive_min = arg_opt_default(
+                survive_min = opt_default(
                     "s",
                     "survive-min",
                     "minimum living neighbours to survive",
                     "INT",
                     DEFAULT_SURVIVE_MIN
                 );
-                survive_max = arg_opt_default(
+                survive_max = opt_default(
                     "t",
                     "survive-max",
                     "maximum living neighbours to survive",
                     "INT",
                     DEFAULT_SURVIVE_MAX
                 );
-                resurrect_min = arg_opt_default(
+                resurrect_min = opt_default(
                     "r",
                     "resurrect-min",
                     "minimum living neighbours to resurrect",
                     "INT",
                     DEFAULT_RESURRECT_MIN
                 );
-                resurrect_max = arg_opt_default(
+                resurrect_max = opt_default(
                     "u",
                     "resurrect-max",
                     "maximum living neighbours to resurrect",
@@ -518,15 +518,15 @@ struct Args {
 }
 
 impl Args {
-    fn params() -> impl argle::Param<Item = Self> {
-        map_params! {
+    fn arg() -> impl Arg<Item = Self> {
+        map_args! {
             let {
-                cell_size = arg_opt_default("c", "cell-size", "size of cell in pixels", "INT", 1);
-                colours = Colours::params();
-                delay = arg_opt("e", "delay", "delay in ms to pause between frames", "INT")
+                cell_size = opt_default("c", "cell-size", "size of cell in pixels", "INT", 1);
+                colours = Colours::arg();
+                delay = opt("e", "delay", "delay in ms to pause between frames", "INT")
                     .map(|d| if d == Some(0) { None } else { d })
-                    .opt_map(Duration::from_millis);
-                rng = arg_opt::<u64>("n", "seed",
+                    .option_map(Duration::from_millis);
+                rng = opt::<u64>("n", "seed",
                                      "seed for the random number generator (omit for random seed)",
                                      "INT")
                     .map(|seed| match seed {
@@ -539,8 +539,8 @@ impl Args {
                         }
                         None => rand::StdRng::from_rng(rand::thread_rng()).unwrap(),
                     });
-                game_params = GameParams::params();
-                window_size = WindowSize::params();
+                game_params = GameParams::arg();
+                window_size = WindowSize::arg();
             } in {
                 Self { cell_size, colours, delay, game_params, rng, window_size }
             }
@@ -549,7 +549,7 @@ impl Args {
 }
 
 fn main() {
-    match Args::params().with_default_help().parse_env_default() {
+    match Args::arg().with_default_help().parse_env_default() {
         (Ok(HelpOr::Value(args)), _usage) => run(args),
         (Ok(HelpOr::Help), usage) => print!("{}", usage.render()),
         (Err(error), usage) => {

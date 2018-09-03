@@ -9,11 +9,10 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "argle"
-version = "0.1.2"
+name = "arg_combinators"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "either 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -301,7 +300,7 @@ dependencies = [
 name = "life-gl"
 version = "0.1.0"
 dependencies = [
- "argle 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "arg_combinators 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cgmath 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_device_gl 0.15.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -663,7 +662,7 @@ dependencies = [
 [metadata]
 "checksum android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "000444226fcff248f2bc4c7625be32c63caccfecc2723a2b9f78a7487a49c407"
 "checksum approx 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "08abcc3b4e9339e33a3d0a5ed15d84a687350c05689d825e0f6655eef9e76a94"
-"checksum argle 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6898494dc8e32414d173eff30bebce8559f4c61549e3fb0b204ee858e0b7995f"
+"checksum arg_combinators 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0dcd97dad3cfc2549bc359d9ab2550d5c9a4ecaffaa8ee14bfcdeba3891e7663"
 "checksum bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "228047a76f468627ca71776ecdebd732a3423081fcf5125585bcd7c49886ce12"
 "checksum block 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0d8c1fef690941d3e7788d328517591fecc684c084084702d6ff1641e993699a"
 "checksum cc 1.0.23 (registry+https://github.com/rust-lang/crates.io-index)" = "c37f0efaa4b9b001fa6f02d4b644dee4af97d3414df07c51e3e4f015f3a3e131"
