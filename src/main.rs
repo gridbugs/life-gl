@@ -415,15 +415,15 @@ impl fmt::Display for WindowSize {
 }
 
 impl WindowSize {
-    fn arg() -> impl Arg<Item = Self> {
-        let dimensions = option_join_args! {
+    fn arg() -> ArgExt<impl Arg<Item = Self>> {
+        let dimensions = args_all_depend! {
             opt("x", "width", "width of window in pixels", "FLOAT"),
             opt("y", "height", "height of window in pixels", "FLOAT"),
         }.option_map(|(width, height)| WindowSize::Dimensions(width, height));
         let fullscreen =
             flag("f", "fullscreen", "take up the entire screen").some_if(WindowSize::Fullscreen);
         dimensions
-            .either_homogeneous(fullscreen)
+            .either(fullscreen)
             .with_default(WindowSize::Dimensions(DEFAULT_WIDTH, DEFAULT_HEIGHT))
     }
 }
@@ -435,15 +435,13 @@ struct Colours {
 }
 
 impl Colours {
-    fn arg() -> impl Arg<Item = Self> {
-        map_args! {
+    fn arg() -> ArgExt<impl Arg<Item = Self>> {
+        args_map! {
             let {
-                alive =
-                    opt_default("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB",
-                                "#FFFFFF".to_string()).convert(|s| colour::parse_colour(s));
-                dead =
-                    opt_default("d", "dead-colour", "colour of dead cells in hex", "#RRGGBB",
-                                "#000000".to_string()).convert(|s| colour::parse_colour(s));
+                alive = opt_by_default_str("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB", "#FFFFFF",
+                            |s| colour::parse_colour(s.as_str()));
+                dead = opt_by_default_str("d", "dead-colour", "colour of dead cells in hex", "#RRGGBB", "#000000",
+                            |s| colour::parse_colour(s.as_str()));
             } in {
                 Self { alive, dead }
             }
@@ -465,8 +463,8 @@ const DEFAULT_RESURRECT_MIN: u32 = 3;
 const DEFAULT_RESURRECT_MAX: u32 = 3;
 
 impl GameParams {
-    fn arg() -> impl Arg<Item = Self> {
-        map_args! {
+    fn arg() -> ArgExt<impl Arg<Item = Self>> {
+        args_map! {
             let {
                 survive_min = opt_default(
                     "s",
@@ -518,8 +516,8 @@ struct Args {
 }
 
 impl Args {
-    fn arg() -> impl Arg<Item = Self> {
-        map_args! {
+    fn arg() -> ArgExt<impl Arg<Item = Self>> {
+        args_map! {
             let {
                 cell_size = opt_default("c", "cell-size", "size of cell in pixels", "INT", 1);
                 colours = Colours::arg();
@@ -549,7 +547,7 @@ impl Args {
 }
 
 fn main() {
-    match Args::arg().with_default_help().parse_env_default() {
+    match Args::arg().with_help_default().parse_env_default() {
         (Ok(HelpOr::Value(args)), _usage) => run(args),
         (Ok(HelpOr::Help), usage) => print!("{}", usage.render()),
         (Err(error), usage) => {
