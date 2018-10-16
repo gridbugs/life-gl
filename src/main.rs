@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate arg_combinators;
 extern crate cgmath;
 #[macro_use]
 extern crate gfx;
@@ -9,9 +7,10 @@ extern crate glutin;
 #[macro_use]
 extern crate nom;
 extern crate rand;
+extern crate simon;
 use gfx::Device;
 
-use arg_combinators::*;
+use simon::*;
 use glutin::GlContext;
 use rand::{Rng, SeedableRng};
 use std::fmt;
