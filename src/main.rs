@@ -440,15 +440,13 @@ impl Colours {
             let {
                 alive = opt("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB")
                     .with_default("#FFFFFF".to_string())
-                    .option_convert_string(|s: &str| unimplemented!());
+                    .convert_string(colour::parse_colour);
                 dead = opt("d", "dead-colour", "colour of dead cells in hex", "#RRGGBB")
-                    .with_default("#000000".to_string());
-                    //.option_convert_string(|s| colour::parse_colour(s));
-            } in {{
-                //let alive = colour::parse_colour(alive.as_str()).unwrap();
-                let dead = colour::parse_colour(dead.as_str()).unwrap();
+                    .with_default("#000000".to_string())
+                    .convert_string(colour::parse_colour);
+            } in {
                 Self { alive, dead }
-            }}
+            }
         }
     }
 }
