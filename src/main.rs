@@ -10,9 +10,9 @@ extern crate rand;
 extern crate simon;
 use gfx::Device;
 
-use simon::*;
 use glutin::GlContext;
 use rand::{Rng, SeedableRng};
+use simon::*;
 use std::fmt;
 use std::thread;
 use std::time::Duration;
@@ -414,15 +414,16 @@ impl fmt::Display for WindowSize {
 }
 
 impl WindowSize {
-    fn arg() -> ArgExt<impl Arg<Item = Self>> {
-        let dimensions = args_all_depend! {
+    fn arg() -> impl Arg<Item = Self> {
+        let dimensions = args_depend! {
             opt("x", "width", "width of window in pixels", "FLOAT"),
             opt("y", "height", "height of window in pixels", "FLOAT"),
-        }.option_map(|(width, height)| WindowSize::Dimensions(width, height));
+        }
+        .option_map(|(width, height)| WindowSize::Dimensions(width, height));
         let fullscreen =
             flag("f", "fullscreen", "take up the entire screen").some_if(WindowSize::Fullscreen);
         dimensions
-            .either(fullscreen)
+            .choice(fullscreen)
             .with_default(WindowSize::Dimensions(DEFAULT_WIDTH, DEFAULT_HEIGHT))
     }
 }
@@ -434,16 +435,20 @@ struct Colours {
 }
 
 impl Colours {
-    fn arg() -> ArgExt<impl Arg<Item = Self>> {
+    fn arg() -> impl Arg<Item = Self> {
         args_map! {
             let {
-                alive = opt_by_default_str("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB", "#FFFFFF",
-                            |s| colour::parse_colour(s.as_str()));
-                dead = opt_by_default_str("d", "dead-colour", "colour of dead cells in hex", "#RRGGBB", "#000000",
-                            |s| colour::parse_colour(s.as_str()));
-            } in {
+                alive = opt("a", "alive-colour", "colour of alive cells in hex", "#RRGGBB")
+                    .with_default("#FFFFFF".to_string())
+                    .option_convert_string(|s: &str| unimplemented!());
+                dead = opt("d", "dead-colour", "colour of dead cells in hex", "#RRGGBB")
+                    .with_default("#000000".to_string());
+                    //.option_convert_string(|s| colour::parse_colour(s));
+            } in {{
+                //let alive = colour::parse_colour(alive.as_str()).unwrap();
+                let dead = colour::parse_colour(dead.as_str()).unwrap();
                 Self { alive, dead }
-            }
+            }}
         }
     }
 }
@@ -462,37 +467,33 @@ const DEFAULT_RESURRECT_MIN: u32 = 3;
 const DEFAULT_RESURRECT_MAX: u32 = 3;
 
 impl GameParams {
-    fn arg() -> ArgExt<impl Arg<Item = Self>> {
+    fn arg() -> impl Arg<Item = Self> {
         args_map! {
             let {
-                survive_min = opt_default(
+                survive_min = opt(
                     "s",
                     "survive-min",
                     "minimum living neighbours to survive",
                     "INT",
-                    DEFAULT_SURVIVE_MIN
-                );
-                survive_max = opt_default(
+                ).with_default(DEFAULT_SURVIVE_MIN);
+                survive_max = opt(
                     "t",
                     "survive-max",
                     "maximum living neighbours to survive",
                     "INT",
-                    DEFAULT_SURVIVE_MAX
-                );
-                resurrect_min = opt_default(
+                ).with_default(DEFAULT_SURVIVE_MAX);
+                resurrect_min = opt(
                     "r",
                     "resurrect-min",
                     "minimum living neighbours to resurrect",
                     "INT",
-                    DEFAULT_RESURRECT_MIN
-                );
-                resurrect_max = opt_default(
+                ).with_default(DEFAULT_RESURRECT_MIN);
+                resurrect_max = opt(
                     "u",
                     "resurrect-max",
                     "maximum living neighbours to resurrect",
                     "INT",
-                    DEFAULT_RESURRECT_MAX
-                );
+                ).with_default(DEFAULT_RESURRECT_MAX);
             } in {
                 Self {
                     survive_min,
@@ -515,10 +516,10 @@ struct Args {
 }
 
 impl Args {
-    fn arg() -> ArgExt<impl Arg<Item = Self>> {
+    fn arg() -> impl Arg<Item = Self> {
         args_map! {
             let {
-                cell_size = opt_default("c", "cell-size", "size of cell in pixels", "INT", 1);
+                cell_size = opt("c", "cell-size", "size of cell in pixels", "INT").with_default(1);
                 colours = Colours::arg();
                 delay = opt("e", "delay", "delay in ms to pause between frames", "INT")
                     .map(|d| if d == Some(0) { None } else { d })
@@ -546,13 +547,5 @@ impl Args {
 }
 
 fn main() {
-    match Args::arg().with_help_default().parse_env_default() {
-        (Ok(HelpOr::Value(args)), _usage) => run(args),
-        (Ok(HelpOr::Help), usage) => print!("{}", usage.render()),
-        (Err(error), usage) => {
-            print!("{}\n\n", error);
-            print!("{}", usage.render());
-            ::std::process::exit(1);
-        }
-    }
+    run(Args::arg().with_help_default().parse_env_or_exit())
 }

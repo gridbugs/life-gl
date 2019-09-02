@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Stephen Sherratt <sfsherratt@gmail.com>"]
 
 [dependencies]
-simon = "0.1"
+simon = { git = "ssh://git@github.com/stevebob/simon.git" }
 rand = "0.5"
 cgmath = "0.16"
 gfx = "0.17"
