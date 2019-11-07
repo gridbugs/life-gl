@@ -2,6 +2,7 @@
 name = "life-gl"
 version = "0.1.0"
 authors = ["Stephen Sherratt <sfsherratt@gmail.com>"]
+edition = "2018"
 
 [dependencies]
 simon = "0.3"
@@ -12,3 +13,5 @@ gfx_device_gl = "0.15"
 gfx_window_glutin = "0.26"
 glutin = "0.18"
 nom = "4.0"
+log = "0.4"
+simple_logger = "1.3"

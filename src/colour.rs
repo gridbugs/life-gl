@@ -1,3 +1,5 @@
+use nom::*;
+
 fn from_hex(input: &str) -> Result<u8, ::std::num::ParseIntError> {
     u8::from_str_radix(input, 16)
 }

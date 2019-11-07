@@ -1,16 +1,6 @@
-extern crate cgmath;
-#[macro_use]
-extern crate gfx;
-extern crate gfx_device_gl;
-extern crate gfx_window_glutin;
-extern crate glutin;
-#[macro_use]
-extern crate nom;
-extern crate rand;
-extern crate simon;
-use gfx::Device;
-
+use gfx::{self, *};
 use glutin::GlContext;
+use log::info;
 use rand::{Rng, SeedableRng};
 use simon::*;
 use std::fmt;
@@ -123,6 +113,7 @@ where
         out_colour: out_colour.clone(),
         in_colour: (in_colour, sampler),
     };
+    info!("creating pipeline: life");
     let pso = factory
         .create_pipeline_simple(
             include_bytes!("shaders/life.150.vert"),
@@ -149,6 +140,7 @@ where
         out_colour: out_colour,
         in_colour: (in_colour, sampler),
     };
+    info!("creating pipeline: flip");
     let pso = factory
         .create_pipeline_simple(
             include_bytes!("shaders/flip.150.vert"),
@@ -173,6 +165,7 @@ where
         properties: factory.create_constant_buffer(1),
         out_colour: out_colour,
     };
+    info!("creating pipeline: init");
     let pso = factory
         .create_pipeline_simple(
             include_bytes!("shaders/init.150.vert"),
@@ -200,6 +193,7 @@ where
         out_colour: out_colour,
         in_colour: (in_colour, sampler),
     };
+    info!("creating pipeline: output");
     let pso = factory
         .create_pipeline_simple(
             include_bytes!("shaders/output.150.vert"),
@@ -545,5 +539,6 @@ impl Args {
 }
 
 fn main() {
+    simple_logger::init().unwrap();
     run(Args::arg().with_help_default().parse_env_or_exit())
 }
