@@ -355,6 +355,9 @@ fn run(
                                 glutin::VirtualKeyCode::Space => {
                                     renderer.init(&mut encoder, &mut rng, colours, game_params);
                                 }
+                                glutin::VirtualKeyCode::Escape => {
+                                    running = false
+                                }
                                 _ => (),
                             },
                             _ => (),
